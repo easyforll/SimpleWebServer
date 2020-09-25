@@ -34,7 +34,7 @@ public:
     static const int READ_BUFFER_SIZE =2048;
     static const int WRITE_BUFFER_SIZE=1024;
 
-    enum MEHOD{
+    enum METHOD{
         GET = 0,
         POST,
         HEAD,
@@ -61,7 +61,7 @@ public:
         CLOSED_CONNECTION
     };
     enum LINE_STATUS{
-        LINE_OK  = 0;
+        LINE_OK  = 0,
         LINE_BAD,
         LINE_OPEN
     };
@@ -85,7 +85,7 @@ private:
     void init();
     HTTP_CODE process_read();
     bool process_write(HTTP_CODE ret);
-    HTTP_CODE pares_request_line(char* text);
+    HTTP_CODE parse_request_line(char* text);
     HTTP_CODE parse_headers(char* text);
     HTTP_CODE parse_content(char* text);
     HTTP_CODE do_request();
@@ -109,7 +109,7 @@ public:
 private:
     int m_sockfd;
     sockaddr_in m_address;
-    char m_read_buff[READ_BUFER_SIZE];
+    char m_read_buf[READ_BUFFER_SIZE];
     int m_read_idx;
     int m_checked_idx;
     int m_start_line;

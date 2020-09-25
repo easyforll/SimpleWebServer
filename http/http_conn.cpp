@@ -144,7 +144,7 @@ void http_conn:: init(){
     improv = 0;
     memset(m_read_buf,0,READ_BUFFER_SIZE);
     memset(m_write_buf,0,WRITE_BUFFER_SIZE);
-    memset(m_real_life,0,FILENAME_LEN);
+    memset(m_real_file,0,FILENAME_LEN);
 }
 //analyze each line content from state machine
 //return state is read ,LINE_OK,LINE_BAD,LINE_OPEN
@@ -196,7 +196,7 @@ bool http_conn::read_once(){
         while(true){
             bytes_read = recv(m_sockfd,m_read_buf+m_read_idx,READ_BUFFER_SIZE - m_read_idx,0);
             if(bytes_read == -1){
-                if(erroo ==EAGAIN||errno == EWOULDBLOCK ){
+                if(errno ==EAGAIN||errno == EWOULDBLOCK ){
                     break;
                 }
                 return false;
@@ -253,7 +253,7 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char* text){
 }
 
 //resolve the head information of http request
-http_conn::HTTP_CODE http_conn::parser_headers(char* text){
+http_conn::HTTP_CODE http_conn::parse_headers(char* text){
     //?? what is the state '\0'?
     if(text[0]=='\0'){
         if(m_content_length!= 0){
@@ -269,7 +269,7 @@ http_conn::HTTP_CODE http_conn::parser_headers(char* text){
     }else if(strncasecmp(text,"Content-length:",15)==0){
         text+=15;
         text +=strspn(text,"\t");
-        m_context_length = atol(text);
+        m_content_length = atol(text);
     }else if(strncasecmp(text,"Host:",5)==0){
         text+=5;
         text +=strspn(text,"\t");
@@ -296,26 +296,29 @@ http_conn::HTTP_CODE http_conn::process_read(){
     HTTP_CODE ret = NO_REQUEST;
     char* text = 0;
     //what does the last || condition means?
-    while((m_check_state==CHECK_STATE_CONTENT && line_status == LINE_OK)||(line_status==parse_line())==LINE_OK)){
+    while((m_check_state==CHECK_STATE_CONTENT && line_status == LINE_OK)||((line_status=parse_line())==LINE_OK)){
         text = get_line();
         m_start_line = m_checked_idx;
         LOG_INFO("%s",text);
         switch (m_check_state){
-            case CHECK_STATE_REQUESTLINE:{
+            case CHECK_STATE_REQUESTLINE:
+            {
                 ret = parse_request_line(text);
                 if(ret == BAD_REQUEST)
                     return BAD_REQUEST;
                 break;
             }
-            case CHECK_STATE_HEADER:{
-                ret = parser_headers(text);
+            case CHECK_STATE_HEADER:
+            {
+                ret = parse_headers(text);
                 if(ret == BAD_REQUEST) 
                     return BAD_REQUEST;
                 else if(ret == GET_REQUEST)
                     return do_request();
                 break;
             }
-            case CHECK_STATE_CONTENT:{
+            case CHECK_STATE_CONTENT:
+            {
                 ret = parse_content(text);
                 if(ret == GET_REQUEST)
                     return do_request();
@@ -325,7 +328,6 @@ http_conn::HTTP_CODE http_conn::process_read(){
             default :
                 return INTERNAL_ERROR;
         }
-
     }
     return NO_REQUEST;
 }
@@ -345,8 +347,13 @@ http_conn::HTTP_CODE http_conn::do_request(){
         //extract the user id and passwd:user=123&passwd=123
         char name[100],password[100];
         int i;
-        for(i=5;m_string[i]!='&';++i,++j)
-            password[j]=m_string[i];
+        for (i = 5; m_string[i] != '&'; ++i)
+            name[i - 5] = m_string[i];
+        name[i - 5] = '\0';
+
+        int j = 0;
+        for (i = i + 10; m_string[i] != '\0'; ++i, ++j)
+            password[j] = m_string[i];
         password[j] = '\0';
 
         if(p[1]=='3'){
@@ -358,11 +365,11 @@ http_conn::HTTP_CODE http_conn::do_request(){
             strcat(sql_insert,password);
             strcat(sql_insert,"')");
 
-            if(users.find(name) == user.end()){
+            if(users.find(name) == users.end()){
                 //warning: the visit to database should be locked! ??potential warning: the visit to database ,which part should server guarantee,which part database itself guarantee
                 m_lock.lock();
                 int res= mysql_query(mysql,sql_insert);
-                users.insert(pair<string,string>(name,passwd));
+                users.insert(pair<string,string>(name,password));
                 m_lock.unlock();
 
                 if(!res)
@@ -402,7 +409,7 @@ http_conn::HTTP_CODE http_conn::do_request(){
     else
         strncpy(m_real_file + len, m_url, FILENAME_LEN - len - 1);
     //??what does the S_IROTH mean?
-    if(stat(m_real_life,&m_file_stat)<0)
+    if(stat(m_real_file,&m_file_stat)<0)
         return NO_RESOURCE;
     if (!(m_file_stat.st_mode & S_IROTH))
         return FORBIDDEN_REQUEST;
@@ -427,7 +434,7 @@ bool http_conn::write(){
         return true;
     }
     while(1){
-        temp = writev(m_scokfd,m_iv,m_iv_count);
+        temp = writev(m_sockfd,m_iv,m_iv_count);
         if(temp<0){
             if(errno==EAGAIN){
                 modfd(m_epollfd,m_sockfd,EPOLLOUT,m_TRIGMode);
@@ -466,7 +473,7 @@ bool http_conn::write(){
 bool http_conn::add_response(const char * format,...){
     if(m_write_idx>=WRITE_BUFFER_SIZE)
         return false;
-    va_list arglist;
+    va_list arg_list;
     va_start(arg_list,format);
     int len = vsnprintf(m_write_buf+m_write_idx,WRITE_BUFFER_SIZE-1-m_write_idx,format,arg_list);
     if (len >= (WRITE_BUFFER_SIZE - 1 - m_write_idx))
@@ -513,7 +520,7 @@ bool http_conn::process_write(HTTP_CODE ret){
     switch(ret){
         case INTERNAL_ERROR:{
             add_status_line(500,error_500_title);
-            add_headers(strlen(error_500_form);
+            add_headers(strlen(error_500_form));
             if (!add_content(error_500_form))
                 return false;
             break;
