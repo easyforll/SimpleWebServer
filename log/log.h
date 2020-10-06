@@ -25,8 +25,8 @@ private:
 	Log();
 	virtual ~Log();
 	void *async_write_log(){
-		string sing_log;
-		while(m_log_queue->pop(sing_log)){
+		string single_log;
+		while(m_log_queue->pop(single_log)){
 			m_mutex.lock();
 			fputs(single_log.c_str(),m_fp);
 			m_mutex.unlock();

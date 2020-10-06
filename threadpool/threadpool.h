@@ -11,11 +11,12 @@
 template <typename T>
 class threadpool{
 public:
-    threadpool(const threadpool<T>&);//addcode:禁止复制拷贝
-    const threadPool& operator=(const threadpool<T>&);//
+    //threadpool(const threadpool<T>&);//addcode:禁止复制拷贝
+    //const threadpool& operator=(const threadpool<T>&);//
     threadpool(int actor_model,connection_pool * connpool,int thread_number =8,int max_request=10000);
-    ~threadpool(T* request ,int state);
+    bool append(T* request ,int state);
     bool append_p(T* request);
+    ~threadpool();
 private:
     //use static to be invoked conveniently by thread entrance function?
     static void * worker(void* arg);
@@ -29,7 +30,7 @@ private:
     locker m_queuelocker;       //the mutex of queue-
     sem m_queuestat;            //whether there is task to be delt
     connection_pool* m_connPool;//data base
-    int m_actor_model           //model exchange
+    int m_actor_model;           //model exchange
 };
 
 template<typename T>
@@ -88,7 +89,7 @@ void* threadpool<T>::worker(void* arg){
     return pool;
 }
 template<typename T>
-void* threadpool<T>::run(){
+void threadpool<T>::run(){
     while(true){
         m_queuestat.wait(); //correspond to m_queuestat, just like producer(append) and consumer(run)
         m_queuelocker.lock();

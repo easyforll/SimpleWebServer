@@ -69,7 +69,7 @@ void WebServer::log_write(){
         if(1 == m_log_write)
             Log::get_instance()->init("./ServerLog", m_close_log, 2000, 800000, 800);
         else 
-            Log::get_instance()->init("./ServerLog", m_close_log, 2000, 800000, 0)
+            Log::get_instance()->init("./ServerLog", m_close_log, 2000, 800000, 0);
     }
 }
 
@@ -78,7 +78,7 @@ void WebServer::sql_pool(){
     m_connPool = connection_pool::GetInstance();
     m_connPool->init("localhost", m_user, m_passWord, m_databaseName, 3306, m_sql_num, m_close_log);
     //initialize read table
-    users->initmsql_result(m_connPool);
+    users->initmysql_result(m_connPool);
 }
 void WebServer::thread_pool(){
     //线程池
@@ -147,11 +147,11 @@ void WebServer::timer(int connfd, struct sockaddr_in client_address){
     //initialize client data
     //create timer ,set call_back and limit time ,bind user data,add timer into linked list
     users_timer[connfd].address = client_address;
-    users_timer[connfd].address = connfd;
+    users_timer[connfd].sockfd = connfd;
     util_timer *timer = new util_timer;     //warning?? need release timely
-    timer->user_data = &user_timer[connfd];
+    timer->user_data = &users_timer[connfd];
     timer ->cb_func = cb_func;
-    timer_t cur = timer(NULL);
+    time_t cur = time(NULL);
     timer->expire = cur+ 3*TIMESLOT;
     users_timer[connfd].timer = timer;
     utils.m_timer_lst.add_timer(timer);
@@ -184,7 +184,7 @@ bool WebServer::dealclientdata(){
             LOG_ERROR("%s:errno is:%d", "accept error", errno);
             return false;
         }
-        if(http_conn::m_user_count>=NAX_FD){
+        if(http_conn::m_user_count>=MAX_FD){
             utils.show_error(connfd,"Internal server busy");    //??
             LOG_ERROR("%s", "Internal server busy");
             return false;
@@ -314,9 +314,9 @@ void WebServer::eventLoop(){
             LOG_ERROR("%s", "epoll failure");
             break;
         }
-        for(int i=0;i<number,i++){
+        for(int i=0;i<number;i++){
             int sockfd = events[i].data.fd;
-            if(sockfd == m_listen_fd){
+            if(sockfd == m_listenfd){
                 bool flag = dealclientdata();
                 if(false == flag) continue;
             }else if(events[i].events &(EPOLLRDHUP | EPOLLHUP | EPOLLERR)){

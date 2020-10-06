@@ -3,7 +3,7 @@
 int main(int argc, char* argv[]){
     //database information need to be modified
     string user = "root";
-    string passwd = "root";
+    string passwd = "liuliang";
     string databasename = "lldb";
     Config config;
     config.parse_arg(argc,argv);

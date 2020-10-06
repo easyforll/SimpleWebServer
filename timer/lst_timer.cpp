@@ -47,11 +47,11 @@ void sort_timer_lst::adjust_timer(util_timer* timer){
     }else{
         timer->prev->next = timer->next;
         timer->next->prev = timer->prev;
-        add(timer,timer->next);
+        add_timer(timer,timer->next);
     }
 }
 
-void sort_timer_lst::del_timer(utiil_timer* timer){
+void sort_timer_lst::del_timer(util_timer* timer){
     if(!timer)
         return ;
     if((timer == head)&& (timer == tail)){
@@ -81,10 +81,10 @@ void sort_timer_lst::tick(){
     if(!head)
         return ;
     
-    time_t cur = timer(NULL);
+    time_t cur = time(NULL);
     util_timer * tmp = head;
     while(tmp){
-        if(cur<time->expire){
+        if(cur<tmp->expire){
             break;
         }
         tmp->cb_func(tmp->user_data);
@@ -170,7 +170,7 @@ void Utils::timer_handler(){
 }
 
 void Utils::show_error(int connfd,const char* info){
-    send(connfd,info ,strlen(info),0)
+    send(connfd,info ,strlen(info),0);
     close(connfd);
 }
 

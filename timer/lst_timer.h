@@ -30,7 +30,7 @@ struct client_data{
     sockaddr_in address;
     int sockfd;
     util_timer* timer;
-}
+};
 
 class util_timer{
 public:
@@ -55,7 +55,7 @@ private:
     void add_timer(util_timer* timer, util_timer* lst_head);
     util_timer* head;
     util_timer* tail;
-}
+};
 
 class Utils{
 public:
@@ -78,7 +78,7 @@ public:
 
 public:
     static int *u_pipefd;
-    sort_timer_lst m_timer;
+    sort_timer_lst m_timer_lst;
     static int u_epollfd;
     int m_TIMESLOT;
 };
